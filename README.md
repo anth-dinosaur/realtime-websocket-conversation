@@ -10,6 +10,7 @@ The goal of this package is really to reduce the boilerplate code needed to set 
 - Supports OpenAI function calling with simple `@tool` decorator (modified & borrowed from [OpenAI's Agent SDK](https://github.com/openai/openai-agents-python))
   - In your tool function signatures, you can use `state` and `connection` parameters to access mutable state and the OpenAI websocket connection (in case you need to update session settings). If you don't need these, use **kwargs in your function signature, as the decorator will pass them anyway.
 - Handles interruptions and audio truncation for natural conversations
+- Optional callback functions for user and assistant message transcription events
 
 ## Installation
 You can install the package using uv:
@@ -57,8 +58,11 @@ async def media_stream(websocket: WebSocket):
         voice="alloy",
         system_message="You are a helpful chat assistant.",
         temperature=0.8,
+        turn_detection=None,  # Optional turn detection config, defaults to {"type": "server_vad"}, fed directly to session settings
         tools=[],  # Optionally pass tool functions
         state={},  # Optionally pass a mutable state object, to be passed to tool functions
+        on_user_message=None,  # Optional callback when user message transcription completes
+        on_assistant_message=None,  # Optional callback when assistant message transcription completes
     )
 ```
 Point your Twilio webhook to the `/incoming-call` endpoint, and the websocket connection will be established when a call is received.

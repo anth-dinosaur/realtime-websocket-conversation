@@ -1,6 +1,6 @@
 [project]
 name = "realtime-websocket-conversation"
-version = "0.1.1"
+version = "0.1.2"
 description = "Python library that provides a websocket endpoint handler for FastAPI to stream between Twilio and OpenAI realtime."
 readme = "README.md"
 requires-python = ">=3.9"
@@ -15,3 +15,7 @@ dependencies = [
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[project.urls]
+Homepage = "https://github.com/anth-dinosaur/realtime-websocket-conversation"
+Issues = "https://github.com/anth-dinosaur/realtime-websocket-conversation/issues"
