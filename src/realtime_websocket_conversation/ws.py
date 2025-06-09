@@ -2,7 +2,7 @@ import asyncio
 import base64
 import json
 import logging
-from typing import Any
+from typing import Any, Callable, Optional, Awaitable
 
 from agents import function_tool
 from fastapi import WebSocket, WebSocketDisconnect
@@ -37,8 +37,11 @@ async def handle_websocket_conversation(
     voice: str = "alloy",
     system_message: str = "You are a helpful chat assistant.",
     temperature: float = 0.8,
+    turn_detection: Optional[dict] = None,
     tools: list[FunctionToolInfo] = [],
     state: Any = None,
+    on_user_message: Optional[Callable[[str], Awaitable[None]]] = None,
+    on_assistant_message: Optional[Callable[[str], Awaitable[None]]] = None,
 ):
     """
     Handle the websocket conversation with the client and OpenAI.
@@ -50,8 +53,11 @@ async def handle_websocket_conversation(
         voice (str): The voice to be used for audio responses.
         system_message (str): The system message for the assistant.
         temperature (float): The temperature setting for the model.
+        turn_detection (Optional[dict]): Optional turn detection configuration. If None, defaults to {"type": "server_vad"}.
         tools (list[FunctionToolInfo]): The list of tools available for the AI (optional).
         state (Any): The state to be passed to the tools, if any. This should be a mutable object. (optional).
+        on_user_message (Optional[Callable[[str], Awaitable[None]]]): Optional async callback function called when user message transcription is completed.
+        on_assistant_message (Optional[Callable[[str], Awaitable[None]]]): Optional async callback function called when assistant message transcription is completed.
     """
     logging.info("Client connected")
     await websocket.accept()
@@ -67,7 +73,9 @@ async def handle_websocket_conversation(
 
         await connection.session.update(
             session={
-                "turn_detection": {"type": "server_vad"},
+                "turn_detection": turn_detection
+                if turn_detection is not None
+                else {"type": "server_vad"},
                 "input_audio_format": "g711_ulaw",
                 "output_audio_format": "g711_ulaw",
                 "voice": voice,
@@ -179,9 +187,13 @@ async def handle_websocket_conversation(
 
                     if event.type == "conversation.item.input_audio_transcription.completed":
                         logging.info(f"===> USER: {event.transcript}")
+                        if on_user_message:
+                            await on_user_message(event.transcript)
 
                     if event.type == "response.audio_transcript.done":
                         logging.info(f"===> ASSISTANT: {response_transcript}")
+                        if on_assistant_message:
+                            await on_assistant_message(response_transcript)
                         response_transcript = ""
 
                     if event.type == "input_audio_buffer.speech_started":
@@ -199,7 +211,7 @@ async def handle_websocket_conversation(
                                     logging.info(
                                         f"Function call {call_id}: {name} with arguments: {arguments}"
                                     )
-                                    tool: FunctionToolInfo = next(
+                                    tool = next(
                                         (t for t in tools if t.function_tool.name == name),
                                         None,
                                     )
